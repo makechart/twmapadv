@@ -1,6 +1,6 @@
 module.exports =
   pkg:
-    name: 'twmapadv', version: '0.0.2'
+    name: 'twmapadv', version: '0.0.3'
     # lite: 不帶 d3 的 base. 補間用 chart.anim, 可以逐格錄影
     extend: {name: "@makechart/base", path: "lite/index.html"}
     # pdmaptw 的投影用 d3-geo, 地圖檔是 topojson. 其餘 ( 變形、立體、泡泡 ) 都自己算
