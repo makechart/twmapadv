@@ -2,7 +2,16 @@
 
 縣市內的鄉鎮 / 村里地圖。地圖資料來自 `pdmaptw` ( 2.4.0 起的各縣市村里檔 )。
 
-block data: `level`, 例如 `county/臺北市` ( 預設 ). 會載入 `<level>.map.js` 與 `<level>.village.map.js`.
+block data `level` 決定畫哪兩層 ( 程式與資料的維度一律叫上層 `town`、下層 `village` ):
+
+| level | 上層 / 下層 | 地圖檔 ( pdmaptw >= 2.6.0 ) |
+| --- | --- | --- |
+| `town` | 縣市 / 鄉鎮 ( 全國 ) | `town.map.js`, 上層是它的 `objects.county` |
+| `county/<縣市>` ( 預設 `county/臺北市` ) | 鄉鎮 / 村里 | `county/<縣市>.village.map.js`, 上層是它的 `objects.town` |
+| `county/<縣市>/<鄉鎮>` | 該鄉鎮 / 它的村里 | 同上, 只留這個鄉鎮 ( 名稱或 8 碼代碼 ) |
+
+維度在編輯器裡的名稱依層級顯示 ( 全國是縣市 / 鄉鎮 ). 下層名稱可以帶上層的名字 ( `臺北市中正區` ).
+地圖範圍不含遠方的小島 ( 例如東沙、南沙 ), 範圍外的部分會被裁掉.
 
 鄉鎮的形狀用村里檔裡的 `objects.town` ( pdmaptw 2.5.0 起, 由村里合成、與村里共用 arc ), 不用鄉鎮檔:
 兩個檔來自不同的 shapefile、各自簡化, 界線對不上, 一起畫時會錯開.
@@ -52,8 +61,8 @@ block data: `level`, 例如 `county/臺北市` ( 預設 ). 會載入 `<level>.ma
 
 ## 範例資料
 
-每個縣市一個 `src/sample/<縣市>.json` ( build 時複製到 `dist/sample/` ), `sample()` 執行時才依 `level`
-載入那一個 ( 網址由 block manager 照 registry 規則組出 ). 由 `tool/sample.js` 產生
+每個縣市一個 `src/sample/<縣市>.json`, 全國是 `src/sample/全國.json` ( build 時複製到 `dist/sample/` ),
+`sample()` 執行時才依 `level` 載入那一個 ( 單一鄉鎮從縣市檔篩出 ) ( 網址由 block manager 照 registry 規則組出 ). 由 `tool/sample.js` 產生
 ( 內政部戶政司 ODRP014 村里戶數、單一年齡人口; 面積取自 pdmaptw ):
 
     node tool/sample.js 11409 ../../../plotdb/projects/pdmaptw                 # 全部縣市

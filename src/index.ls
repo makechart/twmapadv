@@ -11,6 +11,7 @@ module.exports =
     ]
     i18n:
       "zh-TW":
+        "county": "縣市"
         "town": "鄉鎮"
         "village": "村里"
         "value": "數值"
@@ -18,6 +19,7 @@ module.exports =
         "category": "分類"
         "proportion": "比例"
         "aggregated": "村里匯總"
+        "aggregated-town": "鄉鎮匯總"
   init: ({root, context, t, pubsub, data, manager}) ->
     mod {context, t, data, manager, cls: @_instance.block}
       .then (m) -> pubsub.fire \init, mod: m .then ~> it.0
@@ -242,16 +244,26 @@ mod = ({context, t, data, manager, cls}) ->
   t = t or (-> it)
   <~ Promise.resolve!then _
   level = data.level or 'county/臺北市'
-  county = level.split('/').1 or ''
-  # 只載村里檔: 2.5.0 起村里檔帶著由村里合成、與村里共用 arc 的鄉鎮 ( objects.town ).
-  # 鄉鎮檔來自另一份 shapefile、各自簡化, 界線跟村里對不上, 不用
-  ver = "2.5.0"
+  # 兩種層級, 程式裡一律叫上層 town、下層 village:
+  #  - 縣市 ( county/<縣市名> ): 鄉鎮 > 村里, 用村里檔, 鄉鎮取自它的 objects.town
+  #  - 全國 ( town ): 縣市 > 鄉鎮, 用鄉鎮檔, 縣市取自它的 objects.county ( pdmaptw 2.6.0 起 )
+  #  - 鄉鎮 ( county/<縣市名>/<鄉鎮名> ): 只有這個鄉鎮與它的村里, 用該縣市的村里檔
+  national = level == \town
+  parts = if national => [] else level.split('/')
+  county = parts.1 or ''
+  only = parts.2
+  clevel = "county/#county"
+  lv = if national => {file: "town.map.js", type: \town, upper: \county, len: 5, un: \c, ln: \t, sample: \全國}
+  else {file: "#clevel.village.map.js", type: "#clevel/village", upper: \town, len: 8, un: \t, ln: \v, sample: county}
+  # 只載下層的檔: 它帶著由下層合成、共用 arc 的上層 ( 村里檔的 objects.town, 鄉鎮檔的 objects.county ).
+  # 上層自己的檔來自另一份 shapefile、各自簡化, 界線跟下層對不上, 不用
+  ver = "2.6.0"
   libs = [
     {name: "pdmaptw", version: ver, path: "index.min.js", async: false}
-    {name: "pdmaptw", version: ver, path: "#level.village.map.js", async: false}
+    {name: "pdmaptw", version: ver, path: lv.file, async: false}
   ]
   ({pdmaptw}) <- manager.rescope.load libs, cls.context! .then _
-  vmap <- pdmaptw.get("#level/village").then _
+  vmap <- pdmaptw.get(lv.type).then _
   norm = (s) -> pdmaptw.normalize("#{if s? => s else ''}").trim!
   cnorm = norm county
   # 名稱比對: 去掉縣市名、臺 -> 台
@@ -259,7 +271,7 @@ mod = ({context, t, data, manager, cls}) ->
 
   # 投影後再縮放成寬 1000 的座標 ( 地圖單位 ). 之後的變形、泡泡排版都在這個座標裡做, 與畫面大小無關
   proj = pdmaptw.projection!
-  read = (map, lv, obj) ->
+  read = (map, kind, obj) ->
     if !(map and map.topo.objects[obj]) => return []
     {topo, meta} = map
     topojson.feature(topo, topo.objects[obj]).features.map (f) ->
@@ -268,21 +280,44 @@ mod = ({context, t, data, manager, cls}) ->
       polys = if g.type == \Polygon => [g.coordinates] else if g.type == \MultiPolygon => g.coordinates else []
       polys = polys.map (poly) -> poly.map (ring) -> ring.map (c) -> proj c
       nm = (k) -> if p[k]? => norm(meta.name[p[k]]) else ''
-      {code: p.code, level: lv, town: nm(\t), village: nm(\v), polys, tcode: "#{p.code}".substring(0, 8)}
-  towns = read vmap, \town, \town
+      {code: p.code, level: kind, town: nm(lv.un), village: nm(lv.ln), polys, tcode: "#{p.code}".substring(0, lv.len)}
+  towns = read vmap, \town, lv.upper
   villages = read vmap, \village, \pdmaptw
-  # 縣界: 立體時當底板. 鄉鎮共用 arc, 合起來就是乾淨的外框
+  # 單一鄉鎮: 名稱或 8 碼代碼
+  if only =>
+    towns = towns.filter (t) -> t.code == only or t.town == norm(only).replace(norm(county), '')
+    codes = Object.fromEntries towns.map -> [it.code, true]
+    villages = villages.filter (v) -> codes[v.tcode]
+  # 外框 ( 縣界 / 國界 ): 立體時當底板. 上層共用 arc, 合起來就是乾淨的外框
   outline = if towns.length =>
-    m = topojson.merge vmap.topo, vmap.topo.objects.town.geometries
+    keep = Object.fromEntries towns.map -> [it.code, true]
+    m = topojson.merge vmap.topo, vmap.topo.objects[lv.upper].geometries.filter (g) -> keep[g.properties.code]
     (if m.type == \Polygon => [m.coordinates] else m.coordinates).map (poly) ->
       poly.map (ring) -> ring.map (c) -> proj c
   else []
+  # 範圍不含遠方的小島: 旗津區、高雄市含東沙、南沙, 全部框進來本島會縮成一點.
+  # 主體 = 佔外框面積 1% 以上的區塊; 離主體的範圍超過它對角線兩倍的不算 ( 全國圖的金門、馬祖仍在範圍內 ).
+  # 範圍外的照畫, 由 view 的裁切擋掉 ( overflow )
+  oa = (p) -> Math.abs ring-area(p.0)
+  total = outline.reduce ((a, p) -> a + oa(p)), 0
+  bb = (ps) ->
+    b = [Infinity, Infinity, -Infinity, -Infinity]
+    each-point ps, (q) -> b := [b.0 <? q.0, b.1 <? q.1, b.2 >? q.0, b.3 >? q.1]
+    b
+  B = bb outline.filter (p) -> oa(p) >= total * 0.01
+  D = Math.hypot(B.2 - B.0, B.3 - B.1)
+  main = outline.filter (p) ->
+    c = bb [p]
+    dx = (B.0 - c.2) >? (c.0 - B.2) >? 0
+    dy = (B.1 - c.3) >? (c.1 - B.3) >? 0
+    Math.hypot(dx, dy) <= D * 2
   [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity]
-  for t in towns => each-point t.polys, (q) ->
+  each-point main, (q) ->
     x0 := x0 <? q.0
     y0 := y0 <? q.1
     x1 := x1 >? q.0
     y1 := y1 >? q.1
+  overflow = main.length < outline.length
   k = 1000 / ((x1 - x0) or 1)
   for f in towns ++ villages ++ [{polys: outline}] => each-point f.polys, (q) ->
     q.0 = (q.0 - x0) * k
@@ -298,22 +333,24 @@ mod = ({context, t, data, manager, cls}) ->
   for t in towns => town-by-name[t.town] = t
   vill-by-name = {}
   for v in villages => vill-by-name["#{v.tcode}/#{v.village}"] = v
-  geo = {towns, villages, outline, W, H, vill-of, feat}
+  geo = {towns, villages, outline, main, overflow, W, H, vill-of, feat, national}
 
   # 範例資料每個縣市一個檔 ( dist/sample/<縣市>.json, 由 tool/sample.js 產生 ), 用到才載入.
   # 網址照 registry 的規則組 ( 沙盒裡是靜態網域 ), 跟地圖檔同一個來源
   sample: ->
-    url = manager.get-url {ns: cls.ns, name: cls.name, version: cls.version, path: "sample/#county.json", type: \json}
+    url = manager.get-url {ns: cls.ns, name: cls.name, version: cls.version, path: "sample/#{lv.sample}.json", type: \json}
     fetch url
       .then (r) -> if r.ok => r.json! else Promise.reject new Error("#{r.status}")
       .catch (e) ->
-        console.warn "[twmapadv] sample data for #county not found:", e
+        console.warn "[twmapadv] sample data for #{lv.sample} not found:", e
         {head: [], units: {}, rows: []}
       .then ({head, units, rows}) ->
+        # 單一鄉鎮: 只留它的列
+        if only => rows = rows.filter (r) -> norm(r.0) in towns.map(-> it.town)
         raw: rows.map (r) -> Object.fromEntries head.map (h, i) -> [h, r[i]]
         binding:
-          town: {key: \鄉鎮}
-          village: {key: \村里}
+          town: {key: head.0}
+          village: {key: head.1}
           value: {key: \人口密度, unit: units.人口密度}
           size: {key: \人口, unit: units.人口}
           cat: {key: \高齡分級}
@@ -403,8 +440,9 @@ mod = ({context, t, data, manager, cls}) ->
   }
 
   dimension:
-    town: {type: \N, name: "town", priority: 1}
-    village: {type: \N, name: "village", priority: 2}
+    # 上層 / 下層. 名稱依層級: 縣市圖是鄉鎮 / 村里, 全國是縣市 / 鄉鎮
+    town: {type: \N, name: (if national => "county" else "town"), priority: 1}
+    village: {type: \N, name: (if national => "town" else "village"), priority: 2}
     value: {type: \R, name: "value", priority: 3}
     size: {type: \R, name: "size", priority: 4}
     cat: {type: \C, name: "category", priority: 5}
@@ -516,7 +554,8 @@ mod = ({context, t, data, manager, cls}) ->
       if !v or (v.toLowerCase! in town-words) =>
         @rec[tf.code] = vals(d) <<< {keys: [d.town]}
       else
-        vf = @geo.feat[v] or vill-by-name["#{tf.code}/#{norm v}"]
+        # 下層名稱可以帶上層的名字 ( 臺北市中正區 )
+        vf = @geo.feat[v] or vill-by-name["#{tf.code}/#{norm v}"] or vill-by-name["#{tf.code}/#{norm(v).replace(tf.town, '')}"]
         if vf and vf.level == \village => @rec[vf.code] = vals(d) <<< {keys: [d.town], vname: d.village}
     # 沒有「全區」列的鄉鎮, 由村里匯總
     agg = @cfg.village.aggregate
@@ -763,7 +802,7 @@ mod = ({context, t, data, manager, cls}) ->
       cy = @geo.H / 2
       [w, h] = [@geo.W, @geo.H]
       focus = @local.focus!
-      pts = @geo.outline
+      pts = @geo.main
       if focus =>
         shape = @local.shape!
         pts = [].concat.apply [], focus.map -> shape.polys[it.code]
@@ -776,7 +815,7 @@ mod = ({context, t, data, manager, cls}) ->
         [cx, cy, w, h] = [(x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) or 1, (y1 - y0) or 1]
       @clip.setAttribute \width, box.width
       @clip.setAttribute \height, box.height
-      if focus => @g.view.setAttribute \clip-path, "url(\##{@clip.parentNode.id})"
+      if focus or @geo.overflow => @g.view.setAttribute \clip-path, "url(\##{@clip.parentNode.id})"
       else @g.view.removeAttribute \clip-path
       if !is3d =>
         s = Math.min((box.width - 2 * pad) / w, (box.height - 2 * pad) / h) >? 0.01
@@ -1344,7 +1383,7 @@ mod = ({context, t, data, manager, cls}) ->
           lines.push "#{b.name or b.key}: #{fv p, b}#{if tot and p? => " (#{(p / tot * 100).toFixed(1)}%)" else ''}"
       {
         group: if f.level == \village => f.town else ''
-        name: name + (if r.agg => " ( #{t \aggregated} )" else '')
+        name: name + (if r.agg => " ( #{t(if @geo.national => \aggregated-town else \aggregated)} )" else '')
         value: lines.0 or '-'
         value-alt: lines.slice(1).join('\n')
       }

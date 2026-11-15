@@ -11,7 +11,9 @@
 //   https://www.ris.gov.tw/rs-opendata/api/v1/datastore/ODRP014/<yyymm>?page=<n>
 // 面積取自 pdmaptw 的 village.stat.json / town.stat.json ( 由簡化前的界線算的, km² )
 //
-// 每個縣市輸出村里各一列, 另加每個鄉鎮一列「全區」, 其值就是鄉鎮值 ( 圖表會優先用它 )
+// 每個縣市輸出村里各一列, 另加每個鄉鎮一列「全區」, 其值就是鄉鎮值 ( 圖表會優先用它 ).
+// 另外輸出 全國.json ( 全國圖, level: town ): 每個鄉鎮一列, 每個縣市一列「全區」.
+// 只處理部分縣市時不輸出全國
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -66,6 +68,8 @@ const csv = (rows) => rows.map((r) => r.map((v) => /[",\n]/.test(`${v}`) ? `"${`
   const rows = await fetchAll();
   const vstat = JSON.parse(fs.readFileSync(path.join(pdmaptw, 'src/topojson/village.stat.json')));
   const tstat = JSON.parse(fs.readFileSync(path.join(pdmaptw, 'src/topojson/town.stat.json')));
+  const cstat = JSON.parse(fs.readFileSync(path.join(pdmaptw, 'src/topojson/county.stat.json')));
+  const nation = { towns: [], counties: [] };
   const outDir = path.join(__dirname, '../src/sample');
   fs.mkdirSync(outDir, { recursive: true });
   const all = {};
@@ -95,9 +99,23 @@ const csv = (rows) => rows.map((r) => r.map((v) => /[",\n]/.test(`${v}`) ? `"${`
       if (!tstat[code]) throw new Error(`no area for town ${code} ${county}${t.town}`);
       return [t.town, '全區'].concat(summarize(t, tstat[code].area));
     });
+    // 全國: 縣市的值是它所有鄉鎮的和
+    const ccode = Object.keys(towns)[0].slice(0, 5);
+    if (!cstat[ccode]) throw new Error(`no area for county ${ccode} ${county}`);
+    const c = { m: 0, f: 0, a0: 0, a1: 0, a2: 0 };
+    for (const [code, t] of Object.entries(towns)) {
+      ['m', 'f', 'a0', 'a1', 'a2'].forEach((k) => c[k] += t[k]);
+      nation.towns.push([county, t.town].concat(summarize(t, tstat[code].area)));
+    }
+    nation.counties.push([county, '全區'].concat(summarize(c, cstat[ccode].area)));
     all[county] = trows.concat(vrows);
     fs.writeFileSync(path.join(outDir, `${county}.json`), JSON.stringify({ source, head, units, rows: all[county] }));
     console.error(`${county}: ${trows.length} towns, ${vrows.length} villages`);
+  }
+  if (!picked.length) {
+    const nhead = ['縣市', '鄉鎮'].concat(head.slice(2));
+    fs.writeFileSync(path.join(outDir, '全國.json'), JSON.stringify({ source, head: nhead, units, rows: nation.counties.concat(nation.towns) }));
+    console.error(`全國: ${nation.counties.length} counties, ${nation.towns.length} towns`);
   }
   if (missing.length) console.error(`地圖上沒有的村里 ( 已略過, 人口仍算進鄉鎮 ) ${missing.length}:\n  ${missing.join('\n  ')}`);
   if (csvDir) {

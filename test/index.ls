@@ -40,6 +40,12 @@ click-village = (idx) -> (c, ctx) ->
   n = ctx.root.querySelectorAll('g.unit.village:not([style*=none]) path.top')[idx]
   n.dispatchEvent new MouseEvent(\click, {bubbles: true})
 
+# 載入這個層級的範例資料 ( 全國 / 單一鄉鎮 )
+# 載不到 ( 例如 build 之前才產生的檔 ) 時會是空資料, 地圖照樣畫得出來, 所以要檢查
+national = (c) -> c.mod.sample!then (d) ->
+  if d.raw.length < 5 => throw new Error("範例資料只有 #{d.raw.length} 列")
+  c.set-raw d.raw, d.binding
+
 # 外部篩選後的子集 ( dashboard 給的 ), schema 與 raw 相同.
 # 核心目前只用一個維度對齊 ( 這張圖是 town ), 所以 subset 的 case 只用鄉鎮資料
 subset-of = (d, seed = 9) ->
@@ -160,3 +166,13 @@ mctest.suite do
     # 範例資料: sample() 執行時載入 dist/sample/臺北市.json
     * name: "sample"
       steps: [(c) -> c.mod.sample!then (d) -> c.set-raw d.raw, d.binding]
+
+    # 全國 ( level: town ): 縣市 > 鄉鎮, 用鄉鎮檔與它的 objects.county. 資料是 dist/sample/全國.json
+    * name: "national", block: {level: \town}, steps: [national]
+    * name: "national:towns", block: {level: \town}, config: {village: {mode: \all}}, steps: [national]
+    * name: "national:click", block: {level: \town}, steps: [national, click(5)]
+    * name: "national:extrude", block: {level: \town}, config: {extrude: {enabled: true, rotate: \none}}, steps: [national]
+    * name: "national:bubble", block: {level: \town}, config: {mode: \bubble}, steps: [national]
+    # 單一鄉鎮 ( county/<縣市>/<鄉鎮> ): 只有它與它的村里. 旗津區含東沙、南沙, 範圍只看主要的區塊
+    * name: "town:single", block: {level: 'county/臺北市/大安區'}, config: {village: {mode: \all}}, steps: [national]
+    * name: "town:overflow", block: {level: 'county/高雄市/旗津區'}, config: {village: {mode: \all}}, steps: [national]
