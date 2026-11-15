@@ -243,15 +243,14 @@ mod = ({context, t, data, manager, cls}) ->
   <~ Promise.resolve!then _
   level = data.level or 'county/臺北市'
   county = level.split('/').1 or ''
-  # 2.4.0 起有各縣市的村里檔, 2.5.0 起村里檔帶著共用 arc 的鄉鎮 ( objects.town )
+  # 只載村里檔: 2.5.0 起村里檔帶著由村里合成、與村里共用 arc 的鄉鎮 ( objects.town ).
+  # 鄉鎮檔來自另一份 shapefile、各自簡化, 界線跟村里對不上, 不用
   ver = "2.5.0"
   libs = [
     {name: "pdmaptw", version: ver, path: "index.min.js", async: false}
-    {name: "pdmaptw", version: ver, path: "#level.map.js", async: false}
     {name: "pdmaptw", version: ver, path: "#level.village.map.js", async: false}
   ]
   ({pdmaptw}) <- manager.rescope.load libs, cls.context! .then _
-  tmap <- pdmaptw.get(level).then _
   vmap <- pdmaptw.get("#level/village").then _
   norm = (s) -> pdmaptw.normalize("#{if s? => s else ''}").trim!
   cnorm = norm county
@@ -260,68 +259,23 @@ mod = ({context, t, data, manager, cls}) ->
 
   # 投影後再縮放成寬 1000 的座標 ( 地圖單位 ). 之後的變形、泡泡排版都在這個座標裡做, 與畫面大小無關
   proj = pdmaptw.projection!
-  read = (map, lv) ->
-    if !map => return []
+  read = (map, lv, obj) ->
+    if !(map and map.topo.objects[obj]) => return []
     {topo, meta} = map
-    topojson.feature(topo, topo.objects.pdmaptw).features.map (f) ->
+    topojson.feature(topo, topo.objects[obj]).features.map (f) ->
       p = f.properties
       g = f.geometry or {}
       polys = if g.type == \Polygon => [g.coordinates] else if g.type == \MultiPolygon => g.coordinates else []
       polys = polys.map (poly) -> poly.map (ring) -> ring.map (c) -> proj c
       nm = (k) -> if p[k]? => norm(meta.name[p[k]]) else ''
       {code: p.code, level: lv, town: nm(\t), village: nm(\v), polys, tcode: "#{p.code}".substring(0, 8)}
-  towns = read tmap, \town
-  villages = read vmap, \village
-  # 合併 topojson 裡的幾個區塊 ( 共用的邊會消掉 ), 投影成 polys.
-  # 村里檔的界線有瑕疵: 相鄰村里的界線在外框上不一定接在同一點 ( 差約 10m ), topojson.merge
-  # 會把外框斷成幾段沒有閉合的線, 並把較小的一段當成洞. 這裡把斷開的線依端點最近的接回去,
-  # 再依方向重新分外框與洞 ( 經緯度下外框是順時針, 有號面積為負 )
-  merge = (map, gs) ->
-    m = topojson.merge map.topo, gs
-    rings = [].concat.apply [], (if m.type == \Polygon => [m.coordinates] else m.coordinates)
-    same = (a, b) -> a.0 == b.0 and a.1 == b.1
-    rings = rings.filter (r) -> r.length > 1
-    done = rings.filter (r) -> same r.0, r[* - 1]
-    open = rings.filter (r) -> !same r.0, r[* - 1]
-    while open.length
-      cur = open.shift!
-      loop
-        e = cur[* - 1]
-        [bi, bd] = [-1, Math.hypot(e.0 - cur.0.0, e.1 - cur.0.1)]
-        for r, i in open => if (d = Math.hypot(e.0 - r.0.0, e.1 - r.0.1)) < bd => [bi, bd] = [i, d]
-        if bi < 0 => break
-        cur = cur ++ open.splice(bi, 1).0
-      done.push cur ++ [cur.0]
-    inside = (p, r) ->
-      c = false
-      j = r.length - 1
-      for i from 0 til r.length
-        [[x0, y0], [x1, y1]] = [r[i], r[j]]
-        if (y0 > p.1) != (y1 > p.1) and p.0 < (x1 - x0) * (p.1 - y0) / (y1 - y0) + x0 => c = !c
-        j = i
-      c
-    polys = done.filter(-> ring-area(it) < 0).sort((a, b) -> ring-area(a) - ring-area(b)).map -> [it]
-    for r in done.filter(-> ring-area(it) > 0)
-      if (p = polys.find (p) -> inside r.0, p.0) => p.push r
-    polys.map (poly) -> poly.map (ring) -> ring.map (c) -> proj c
-  # 鄉鎮檔與村里檔各自簡化過, 兩者的界線對不上 ( 一起畫時會錯開 ).
-  # 有村里時鄉鎮改用村里合成的形狀, 村里底下的鄉鎮界就與村里完全重合. 全縣市合起來幾 ms, 點數約兩倍
-  # pdmaptw 2.5.0 起村里檔帶著由村里合成、共用 arc 的鄉鎮 ( objects.town ), 有就直接用
-  vt = if vmap and vmap.topo.objects.town =>
-    Object.fromEntries topojson.feature(vmap.topo, vmap.topo.objects.town).features.map (f) ->
-      g = f.geometry or {}
-      polys = if g.type == \Polygon => [g.coordinates] else if g.type == \MultiPolygon => g.coordinates else []
-      [f.properties.code, polys.map (poly) -> poly.map (ring) -> ring.map (c) -> proj c]
-  else null
-  if vt => for t in towns => if vt[t.code] => t.polys = vt[t.code]
-  else if vmap =>
-    gs = {}
-    for g in vmap.topo.objects.pdmaptw.geometries => gs[]["#{g.properties.code}".substring(0, 8)].push g
-    for t in towns => if gs[t.code] => t.polys = merge vmap, gs[t.code]
-  # 縣界: 立體時當底板. 跟鄉鎮用同一份來源
-  outline = if vt => merge vmap, vmap.topo.objects.town.geometries
-  else if vmap => merge vmap, vmap.topo.objects.pdmaptw.geometries
-  else if tmap => merge tmap, tmap.topo.objects.pdmaptw.geometries
+  towns = read vmap, \town, \town
+  villages = read vmap, \village, \pdmaptw
+  # 縣界: 立體時當底板. 鄉鎮共用 arc, 合起來就是乾淨的外框
+  outline = if towns.length =>
+    m = topojson.merge vmap.topo, vmap.topo.objects.town.geometries
+    (if m.type == \Polygon => [m.coordinates] else m.coordinates).map (poly) ->
+      poly.map (ring) -> ring.map (c) -> proj c
   else []
   [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity]
   for t in towns => each-point t.polys, (q) ->
