@@ -1,5 +1,14 @@
 # Change Logs
 
+## v0.0.2
+
+ - more levels ( block data `level` ): `town` is the whole country, counties over towns, from the town
+   file and its `objects.county`; `county/<縣市>/<鄉鎮>` is one town over its villages. needs `pdmaptw` 2.6.0
+ - dimension names follow the level ( 縣市 / 鄉鎮 for the whole country )
+ - the map extent leaves out far away islands ( 東沙 / 南沙 under 高雄市旗津區 ), which are clipped
+ - national sample data `sample/全國.json`; a single town filters its county's sample
+ - `tool/icon.js`: per-county chart icons for `@makechart/iconset`
+
 ## v0.0.1
 
  - first release. town / village map of one Taiwan county ( block data `level`, e.g. `county/臺北市` ),
