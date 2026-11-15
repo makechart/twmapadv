@@ -1,5 +1,13 @@
 # Change Logs
 
+## v0.0.3
+
+ - `pdmaptw` 2.7.0: finer village boundaries, and no village lost in simplification
+ - tooltip stays at the upper left of the pointer and only flips where there is no room ( it used to jump
+   around inside large regions ), without blank lines between rows
+ - `tool/icon.js`: `--paths` writes the simplified town paths per county ( the site draws town icons with
+   them ); the point budget counts only the arcs the towns use
+
 ## v0.0.2
 
  - more levels ( block data `level` ): `town` is the whole country, counties over towns, from the town
