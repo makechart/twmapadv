@@ -5,6 +5,8 @@
 //   e.g. node tool/icon.js ../../../plotdb/projects/pdmaptw/dist ../../server/module/makechart/iconset/src/flat
 //
 // 輸出 twmap-<縣市代碼>.svg ( 256x256, 與 iconset 其他圖示相同 ), 並更新同目錄的 index.json.
+// --paths <檔案>: 另外輸出各縣市簡化、投影後的鄉鎮路徑 ( 與圖示相同的形狀與位置 ),
+//   {<縣市代碼>: [[鄉鎮代碼, 鄉鎮名, d], ...]}. 網站的鄉鎮圖示用它在頁面上畫 ( 縣市灰底, 標出該鄉鎮 )
 // 顏色用 icon-gen 的原色 ( teal / coral / gold + 兩種灰 ), iconset 的 build.ls 會換成 logo 色.
 // 鄉鎮取自村里檔的 objects.town ( pdmaptw 2.5.0 起 ), 與村里共用 arc, 簡化後鄰接關係不變
 const fs = require('fs');
@@ -14,7 +16,11 @@ const simplify = require('topojson-simplify');
 // d3-geo 3 是 ESM, node 22 可以直接 require
 const d3 = require('d3-geo');
 
-const [src, out] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const pathsAt = argv.indexOf('--paths');
+const pathsOut = pathsAt >= 0 ? argv.splice(pathsAt, 2)[1] : null;
+const [src, out] = argv;
+const allPaths = {};
 if (!src || !out) {
   console.error('usage: node tool/icon.js <pdmaptw dist dir> <iconset src/flat dir>');
   process.exit(1);
@@ -93,6 +99,8 @@ for (const f of files.sort()) {
     return `    <path fill="${c}"${sparse ? ` stroke="${c}"` : ''} d="${gp(feats[i].geometry)}"/>`;
   });
   const code = d.topo.objects.town.geometries[0].properties.code.slice(0, 5);
+  allPaths[code] = order.map((i) => [feats[i].code, d.meta.name[topo.objects.town.geometries[i].properties.t], gp(feats[i].geometry)])
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1));
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}">\n` +
     `  <g id="towns"${sparse ? ` stroke-width="${fat}"` : ' stroke="#ffffff" stroke-width="1.5"'} stroke-linejoin="round" stroke-linecap="round">\n` +
     paths.join('\n') + '\n  </g>\n</svg>\n';
@@ -102,6 +110,7 @@ for (const f of files.sort()) {
   console.error(`${name} ${code}: ${paths.length} towns${sparse ? ' ( sparse, cover ' + Math.round(cover * 100) + '% )' : ''}, ${Math.round(svg.length / 1024 * 10) / 10}KB`);
 }
 
+if (pathsOut) fs.writeFileSync(pathsOut, JSON.stringify(allPaths));
 const idx = path.join(out, 'index.json');
 const old = fs.existsSync(idx) ? JSON.parse(fs.readFileSync(idx, 'utf8')) : [];
 const names = new Set(list.map((d) => d.name));
