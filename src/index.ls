@@ -503,7 +503,28 @@ mod = ({context, t, data, manager, cls}) ->
         @local.tip f
       range: ~> @layout.get-node \view .getBoundingClientRect!
     }
-    @tip.tip.style <<< {maxWidth: \16em, whiteSpace: \pre-line}
+    # 多行的內容 ( 數值、圓餅各欄 ) 才換行. 整個 tip 都 pre-line 的話, 範本裡元素之間的換行會變成空行
+    @tip.tip.style <<< {maxWidth: \16em}
+    @tip.tip.querySelector('[ld=value-alt]').style.whiteSpace = \pre-line
+    # 位置: 內建的會依滑鼠在區塊中心的哪一側決定方向, 大的區塊 ( 例如花蓮縣 ) 裡一移動就上下左右跳.
+    # 改成固定放在滑鼠左上方, 左邊或上面放不下時才各自翻到右邊或下面
+    render0 = @tip.render
+    @tip.render = (opt = {}) ->
+      render0.call @, opt
+      if !(@enabled and opt.evt) => return
+      rbox = @root.getBoundingClientRect!
+      range = if @range => @range! else rbox
+      tbox = @tip.getBoundingClientRect!
+      [mx, my, m] = [opt.evt.clientX - rbox.x, opt.evt.clientY - rbox.y, @margin]
+      [x0, y0] = [range.x - rbox.x, range.y - rbox.y]
+      [x1, y1] = [x0 + range.width, y0 + range.height]
+      tx = mx - m - tbox.width
+      ty = my - m - tbox.height
+      if tx < x0 => tx = mx + m
+      if ty < y0 => ty = my + m
+      tx = (tx <? x1 - tbox.width) >? x0
+      ty = (ty <? y1 - tbox.height) >? y0
+      @tip.style.transform = "translate(#{tx}px,#{ty}px)"
 
     # 點擊: 行政區 / 泡泡 -> 選取 ( 也展開村里 ); 空白處 -> 收合、清除選取.
     # 立體時拖曳旋轉, 拖過就不算點擊
