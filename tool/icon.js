@@ -46,9 +46,15 @@ for (const f of files.sort()) {
   // 只留鄉鎮 ( 村里不畫 )
   let topo = { ...d.topo, objects: { town: d.topo.objects.town } };
   topo = simplify.presimplify(topo);
-  let total = 0;
-  for (const a of topo.arcs) total += a.length;
-  topo = simplify.simplify(topo, simplify.quantile(topo, Math.max(0, 1 - POINTS / total)));
+  // 門檻只看鄉鎮用到的 arc ( 村里內部的 arc 不畫, 算進去的話村里檔越細, 留下的點越多 ):
+  // 權重第 POINTS 大的值
+  const townArcs = new Set();
+  const walk = (a) => (Array.isArray(a) ? a.forEach(walk) : townArcs.add(a < 0 ? ~a : a));
+  topo.objects.town.geometries.forEach((g) => walk(g.arcs || []));
+  const ws = [];
+  for (const i of townArcs) for (const p of topo.arcs[i]) if (isFinite(p[2])) ws.push(p[2]);
+  ws.sort((a, b) => b - a);
+  topo = simplify.simplify(topo, ws.length > POINTS ? ws[POINTS] : 0);
   const fc = topojson.feature(topo, topo.objects.town);
   // 範圍只看夠大的區塊 ( 佔全縣 1% 以上 ): 高雄市含東沙、南沙, 連江、金門有遠方的小島,
   // 全部框進來本島會縮成一點. 框外的小島不畫

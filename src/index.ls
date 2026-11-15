@@ -257,7 +257,7 @@ mod = ({context, t, data, manager, cls}) ->
   else {file: "#clevel.village.map.js", type: "#clevel/village", upper: \town, len: 8, un: \t, ln: \v, sample: county}
   # 只載下層的檔: 它帶著由下層合成、共用 arc 的上層 ( 村里檔的 objects.town, 鄉鎮檔的 objects.county ).
   # 上層自己的檔來自另一份 shapefile、各自簡化, 界線跟下層對不上, 不用
-  ver = "2.6.0"
+  ver = "2.7.0"
   libs = [
     {name: "pdmaptw", version: ver, path: "index.min.js", async: false}
     {name: "pdmaptw", version: ver, path: lv.file, async: false}
