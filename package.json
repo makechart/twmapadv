@@ -1,0 +1,25 @@
+{
+  "name": "@makechart/twmapadv",
+  "version": "0.0.1",
+  "description": "",
+  "scripts": {
+    "test": "mctest",
+    "test:serve": "mctest serve -o",
+    "test:dev": "mctest -l \"pdmaptw:../../../plotdb/projects/pdmaptw;@makechart/base:../base;@plotdb/chart:../../../plotdb/projects/chart;@plotdb/dash:../../../plotdb/projects/dash\"",
+    "test:dev:serve": "mctest serve -o -l \"pdmaptw:../../../plotdb/projects/pdmaptw;@makechart/base:../base;@plotdb/chart:../../../plotdb/projects/chart;@plotdb/dash:../../../plotdb/projects/dash\""
+  },
+  "keywords": [],
+  "author": "zbryikt",
+  "license": "MIT",
+  "dependencies": {
+    "@plotdb/srcbuild": "^0.0.69",
+    "fedep": "1.6.0",
+    "livescript": "^1.6.0"
+  },
+  "devDependencies": {
+    "@makechart/viewer": "^0.0.4",
+    "d3-array": "^3.2.4",
+    "d3-geo": "^3.1.1",
+    "topojson-client": "^3.1.0"
+  }
+}
