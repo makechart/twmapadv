@@ -55,6 +55,11 @@ subset-of = (d, seed = 9) ->
     {town: row.town, val: +(row.val * k).toFixed(1), pop: Math.round(row.pop * k), m: Math.round(row.m * k), f: Math.round(row.f * k)}
   d
 
+# chart.interactions! ( 哪個操作會發哪幾維的 filter ) 要等於 want
+interactions-is = (want) -> (c) ->
+  got = JSON.stringify c.interactions!
+  if got != JSON.stringify(want) => throw new Error("interactions: #got, 應為 #{JSON.stringify want}")
+
 mctest.suite do
   size: [480, 480]
   normalize: [[/tmap-grad-[a-z0-9]+/g, "tmap-grad-x"], [/tmap-clip-[a-z0-9]+/g, "tmap-clip-x"]]
@@ -106,6 +111,9 @@ mctest.suite do
           n = ctx.root.querySelectorAll('g.unit.town path.top')[2]
           if n.parentNode.style.display == \none => throw new Error("展開成村里了")
           if !((c.binding.town.filter or {}).value or []).length => throw new Error("沒有發篩選")
+    # 點選發 town ( filter-level 是村里時連 village ); 不是核心預設的 name
+    * name: "interactions:town", data: \full, steps: [interactions-is {click: <[town]>}]
+    * name: "interactions:village", data: \full, config: {filter-level: \village}, steps: [interactions-is {click: <[town village]>}]
     * name: "click-village-filter", data: \full, config: {filter-level: \village}, steps: [click(2), click-village(3)]
     * name: "subset:dim", data: \subset, config: {common: {subset: {mode: \dim}}}
     * name: "subset:partial", data: \subset, config: {common: {subset: {mode: \partial}}}

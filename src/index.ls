@@ -551,6 +551,13 @@ mod = ({context, t, data, manager, cls}) ->
 
   destroy: -> @tip.destroy!; @legend.destroy!
 
+  # 點選會發的維度 ( 見 local.click ): 沒綁 town 時不發; filter-level 是村里且有綁 village 時連村里一起發.
+  # 沒宣告的話核心會當成 name, 但這張圖沒有 name 維
+  filter-dims: ->
+    if !@binding.town => return []
+    if @cfg.filter-level == \village and @binding.village => <[town village]> else <[town]>
+  interactions: -> click: @filter-dims!
+
   # 這張圖自己會發 filter ( 鄉鎮, 或鄉鎮 + 村里 ). chart.filter 會幫我們 parse / bind / resize / render
   filter: (filters, internal) ->
 

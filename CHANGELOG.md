@@ -1,5 +1,14 @@
 # Change Logs
 
+## v0.0.5
+
+ - fix bug: `filterDims` was not declared, so the core reported `name`, a dimension this chart doesn't have.
+   it now returns what a click emits: `town`, plus `village` when `filter-level` is village with a village
+   binding, or nothing without a town binding. a host driving `select` by `filterDims` stops treating `town`
+   as a dimension the chart doesn't handle itself
+ - declare `interactions` ( needs `@plotdb/chart` >= 3.16.0 ): click emits the dimensions above
+ - add `interactions:*` test cases
+
 ## v0.0.4
 
  - `village.mode: click` no longer expands a town when the data has no village rows. expanding showed
