@@ -46,7 +46,7 @@ block data `level` 決定畫哪兩層 ( 程式與資料的維度一律叫上層 
 
  - `mode`: `map` / `cartogram` ( 連續型, Dougenik 1985 ) / `bubble` ( Dorling )
  - `extrude.enabled`: 立體. 有底板, 高度 = 數值; `extrude.rotate` 為 `drag` / `auto` / `both` ( 自動轉, 拖曳時暫停 ) / `none`
- - `village.mode`: `click` ( 點鄉鎮展開村里; 再點一次取消選取、或點空白處收合 ) / `all` / `none`.
+ - `village.mode`: `click` ( 點鄉鎮展開村里; 再點一次取消選取、或點空白處收合. 資料裡沒有村里列時不展開, 點選只發篩選 ) / `all` / `none`.
    `village.zoom`: 展開時放大到那個鄉鎮, 色條改顯示村里的範圍
  - `heat`: `sequential` / `diverging` ( 中點 median / mean / manual, 可對稱 ), `steps` 分級;
    刻度 `linear` / `log` ( 跨好幾個數量級時 ) / `pow` / `quantile` ( 依名次, 偏斜的資料也會用滿色階 )

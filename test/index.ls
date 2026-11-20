@@ -98,6 +98,14 @@ mctest.suite do
     * name: "legend-bottom", data: \full, config: {legend: {position: \bottom}}
     * name: "click", data: \full, steps: [click(2)]
     * name: "click-shift", data: \full, steps: [click(2), click(5, true)]
+    # 只有鄉鎮資料: 點選只發篩選, 不展開成沒有值的村里
+    * name: "click:town-only", data: \town
+      steps:
+        click(2)
+        (c, ctx) ->
+          n = ctx.root.querySelectorAll('g.unit.town path.top')[2]
+          if n.parentNode.style.display == \none => throw new Error("展開成村里了")
+          if !((c.binding.town.filter or {}).value or []).length => throw new Error("沒有發篩選")
     * name: "click-village-filter", data: \full, config: {filter-level: \village}, steps: [click(2), click-village(3)]
     * name: "subset:dim", data: \subset, config: {common: {subset: {mode: \dim}}}
     * name: "subset:partial", data: \subset, config: {common: {subset: {mode: \partial}}}

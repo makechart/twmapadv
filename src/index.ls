@@ -385,7 +385,7 @@ mod = ({context, t, data, manager, cls}) ->
       format: type: \format, default: '.3s'
     }
     village:
-      # none: 只畫鄉鎮; click: 點鄉鎮展開村里; all: 全部畫村里
+      # none: 只畫鄉鎮; click: 點鄉鎮展開村里 ( 資料沒有村里時不展開 ); all: 全部畫村里
       mode: type: \choice, values: <[click all none]>, default: \click
       # 沒有「全區」列時, 鄉鎮值怎麼由村里算出來
       aggregate: type: \choice, values: <[sum mean none]>, default: \sum
@@ -638,7 +638,11 @@ mod = ({context, t, data, manager, cls}) ->
     expanded: (t) ->
       if !(@geo.vill-of[t.code] or []).length => return false
       m = @cfg.village.mode
-      m == \all or (m == \click and @expanded[t.code])
+      m == \all or (m == \click and @expanded[t.code] and @local.has-village!)
+
+    # 資料裡有村里 ( 下層 ) 的列. 只有鄉鎮 ( 上層 ) 資料時 click 模式不展開 - 展開後每一塊都沒有值,
+    # 剛選的那塊看起來像被清空 ( 例如只有縣市資料的儀表板 )
+    has-village: -> @geo.villages.some ~> @rec[it.code]
 
     # 目前畫出來的單位: 沒展開的鄉鎮 + 展開的鄉鎮底下的村里
     units: ->
@@ -1414,7 +1418,7 @@ mod = ({context, t, data, manager, cls}) ->
     click: (evt, f) ->
       shift = evt and evt.shiftKey
       town = if f.level == \town => f else @geo.feat[f.tcode]
-      if f.level == \town and @cfg.village.mode == \click and (@geo.vill-of[f.code] or []).length =>
+      if f.level == \town and @cfg.village.mode == \click and (@geo.vill-of[f.code] or []).length and @local.has-village! =>
         if !shift => @expanded = {}
         @expanded[f.code] = true
       # 一塊可能代表好幾個 key ( 見 parse ), 整組進出

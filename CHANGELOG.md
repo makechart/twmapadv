@@ -1,5 +1,13 @@
 # Change Logs
 
+## v0.0.4
+
+ - `village.mode: click` no longer expands a town when the data has no village rows. expanding showed
+   villages without values, so the town just picked looked cleared ( e.g. a dashboard with county data only ).
+   clicking still emits the filter
+ - add `click:town-only` test case
+
+
 ## v0.0.3
 
  - `pdmaptw` 2.7.0: finer village boundaries, and no village lost in simplification
