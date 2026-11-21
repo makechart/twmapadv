@@ -361,82 +361,82 @@ mod = ({context, t, data, manager, cls}) ->
     tip: \tip
   }) <<< {
     # 地圖 / 變形地圖 ( cartogram, 面積依「大小」) / 泡泡 ( dorling )
-    mode: type: \choice, values: <[map cartogram bubble]>, default: \map
+    mode: type: \choice, values: <[map cartogram bubble]>, default: \map, desc: {en: "map: regions as they are; cartogram: regions resized by size; bubble: a circle per region sized by size", "zh-TW": "map：原本的地圖；cartogram：依「大小」變形各區的面積；bubble：每區一個依「大小」縮放的泡泡"}
     # 顏色依什麼: auto = 有「數值」用數值, 否則用分類
-    color-by: type: \choice, values: <[auto value cat]>, default: \auto
+    color-by: type: \choice, values: <[auto value cat]>, default: \auto, desc: {en: "what colors the regions: value, cat ( category ), or auto: value when bound, otherwise category", "zh-TW": "區塊依什麼上色：value 數值、cat 分類；auto 有綁數值就用數值，否則用分類"}
     heat:
       # sequential: 由小到大; diverging: 雙極, 中點兩側各用一種顏色
-      mode: type: \choice, values: <[sequential diverging]>, default: \sequential
+      mode: type: \choice, values: <[sequential diverging]>, default: \sequential, desc: {en: "sequential: one ramp from low to high; diverging: two colors on either side of a center value", "zh-TW": "sequential：由低到高一條色階；diverging：以中點分成兩側，各用一種顏色"}
       # quantile: 依名次 ( 分位數 ), 偏斜的資料也會均勻用到整條色階
-      scale: type: \choice, values: <[linear log pow quantile]>, default: \linear
-      exponent: type: \number, default: 0.5, min: 0.1, max: 5, step: 0.1
+      scale: type: \choice, values: <[linear log pow quantile]>, default: \linear, desc: {en: "how values map to colors; quantile uses ranks, so skewed data still spreads over the whole ramp", "zh-TW": "數值對應到顏色的方式；quantile 依名次，偏斜的資料也會用到整條色階"}
+      exponent: type: \number, default: 0.5, min: 0.1, max: 5, step: 0.1, desc: {en: "exponent of the pow scale", "zh-TW": "pow 色階的指數"}
       # 雙極的中點: 中位數 / 平均 / 手動指定
       center:
-        mode: type: \choice, values: <[median mean manual]>, default: \median
-        value: type: \number, default: 0
+        mode: type: \choice, values: <[median mean manual]>, default: \median, desc: {en: "center of the diverging colors: the median, the mean, or the value below ( manual )", "zh-TW": "雙極色階的中點：中位數、平均，或用下面指定的值 ( manual )"}
+        value: type: \number, default: 0, desc: {en: "center value when the center mode is manual", "zh-TW": "中點設為 manual 時的中點數值"}
       # 兩側用同樣的距離, 這樣同樣深的顏色代表離中點一樣遠
-      symmetric: type: \boolean, default: true
+      symmetric: type: \boolean, default: true, desc: {en: "use the same distance on both sides of the center, so equal shades mean equally far from it", "zh-TW": "中點兩側用相同的距離，同樣深的顏色代表離中點一樣遠"}
       # 0 = 連續; 大於 1 時切成幾級
-      steps: type: \number, default: 0, min: 0, max: 12, step: 1
-      sequential: type: \palette, default: palettes.sequential
-      diverging: type: \palette, default: palettes.diverging
-      empty: type: \color, default: \#e5e5e5
+      steps: type: \number, default: 0, min: 0, max: 12, step: 1, desc: {en: "number of color classes; 0 keeps the colors continuous", "zh-TW": "色階分成幾級；0 表示連續"}
+      sequential: type: \palette, default: palettes.sequential, desc: {en: "colors used in sequential mode", "zh-TW": "sequential 模式用的色票"}
+      diverging: type: \palette, default: palettes.diverging, desc: {en: "colors used in diverging mode", "zh-TW": "diverging 模式用的色票"}
+      empty: type: \color, default: \#e5e5e5, desc: {en: "color of regions without a value", "zh-TW": "沒有數值的區塊的顏色"}
     legend: {} <<< chart.utils.config.preset.legend <<< {
-      format: type: \format, default: '.3s'
+      format: type: \format, default: '.3s', desc: {en: "number format of the color scale labels", "zh-TW": "色條刻度的數值格式"}
     }
     village:
       # none: 只畫鄉鎮; click: 點鄉鎮展開村里 ( 資料沒有村里時不展開 ); all: 全部畫村里
-      mode: type: \choice, values: <[click all none]>, default: \click
+      mode: type: \choice, values: <[click all none]>, default: \click, desc: {en: "click: click a town to show its villages; all: draw every village; none: towns only", "zh-TW": "click：點鄉鎮展開村里；all：全部畫村里；none：只畫鄉鎮"}
       # 沒有「全區」列時, 鄉鎮值怎麼由村里算出來
-      aggregate: type: \choice, values: <[sum mean none]>, default: \sum
+      aggregate: type: \choice, values: <[sum mean none]>, default: \sum, desc: {en: "how a town's value is computed from its villages when the data has no row for the whole town", "zh-TW": "資料沒有鄉鎮整體的列時，如何由村里算出鄉鎮的值"}
       # level: 鄉鎮與村里各自一組色階 / 大小; shared: 共用
-      domain: type: \choice, values: <[level shared]>, default: \level
+      domain: type: \choice, values: <[level shared]>, default: \level, desc: {en: "level: towns and villages get separate color and size ranges; shared: one range for both", "zh-TW": "level：鄉鎮與村里各自一組色階與大小範圍；shared：共用一組"}
       # click 模式下展開村里時, 放大到那個鄉鎮 ( 再點一次或點空白處還原 )
-      zoom: type: \boolean, default: false
+      zoom: type: \boolean, default: false, desc: {en: "in click mode, zoom into the expanded town", "zh-TW": "click 模式展開村里時，放大到那個鄉鎮"}
     border:
       color: type: \color, default: \#fff
-      width: type: \number, default: 1, min: 0, max: 20, step: 0.1
-      linejoin: type: \choice, values: <[round bevel miter]>, default: \round
+      width: type: \number, default: 1, min: 0, max: 20, step: 0.1, desc: {en: "width of the town borders ( px )", "zh-TW": "鄉鎮邊界的粗細 ( px )"}
+      linejoin: type: \choice, values: <[round bevel miter]>, default: \round, desc: {en: "shape of the border corners", "zh-TW": "邊界轉角的形狀"}
       village:
         color: type: \color, default: \#fff
-        width: type: \number, default: 0.4, min: 0, max: 20, step: 0.1
+        width: type: \number, default: 0.4, min: 0, max: 20, step: 0.1, desc: {en: "width of the village borders ( px )", "zh-TW": "村里邊界的粗細 ( px )"}
     extrude:
-      enabled: type: \boolean, default: false
+      enabled: type: \boolean, default: false, desc: {en: "raise each region by its value into 3D columns ( not in bubble mode )", "zh-TW": "依數值把各區塊拉高成立體 ( 泡泡模式不適用 )"}
       # 最高的柱子是地圖寬的幾倍
-      height: type: \number, default: 0.25, min: 0, max: 2, step: 0.01
-      tilt: type: \number, default: 55, min: 0, max: 85, step: 1
-      angle: type: \number, default: -20, min: -180, max: 180, step: 1
+      height: type: \number, default: 0.25, min: 0, max: 2, step: 0.01, desc: {en: "height of the tallest column, as a multiple of the map width", "zh-TW": "最高的柱子是地圖寬度的幾倍"}
+      tilt: type: \number, default: 55, min: 0, max: 85, step: 1, desc: {en: "how far the 3D view leans back ( degrees ); 0 looks straight down", "zh-TW": "立體視角的傾斜角度 ( 度 )；0 是正上方往下看"}
+      angle: type: \number, default: -20, min: -180, max: 180, step: 1, desc: {en: "starting rotation of the 3D map ( degrees )", "zh-TW": "立體地圖一開始的旋轉角度 ( 度 )"}
       # 旋轉: drag = 拖曳, auto = 自動轉, both = 自動轉, 也可以拖曳 ( 拖曳時暫停 )
-      rotate: type: \choice, values: <[drag auto both none]>, default: \drag
-      speed: type: \number, default: 12, min: -180, max: 180, step: 1
+      rotate: type: \choice, values: <[drag auto both none]>, default: \drag, desc: {en: "drag: rotate by dragging; auto: keep turning; both: keep turning and allow dragging", "zh-TW": "drag：拖曳旋轉；auto：自動旋轉；both：自動旋轉，也可以拖曳"}
+      speed: type: \number, default: 12, min: -180, max: 180, step: 1, desc: {en: "auto rotation speed ( degrees per second ); negative turns the other way", "zh-TW": "自動旋轉的速度 ( 度 / 秒 )；負值反方向轉"}
       base:
-        enabled: type: \boolean, default: true
+        enabled: type: \boolean, default: true, desc: {en: "draw a plate under the 3D map", "zh-TW": "在立體地圖下方畫一塊底板"}
         color: type: \color, default: \#d8d8d8
-      shade: type: \number, default: 0.25, min: 0, max: 1, step: 0.01
+      shade: type: \number, default: 0.25, min: 0, max: 1, step: 0.01, desc: {en: "how much darker the side walls are than the tops ( 0 to 1 )", "zh-TW": "側面比頂面暗多少 ( 0 到 1 )"}
     cartogram:
-      iteration: type: \number, default: 15, min: 1, max: 60, step: 1
+      iteration: type: \number, default: 15, min: 1, max: 60, step: 1, desc: {en: "rounds of distortion; more gets areas closer to their sizes but takes longer", "zh-TW": "變形的次數；越多面積越接近目標，但計算越久"}
     bubble:
-      scale: type: \number, default: 1, min: 0.1, max: 4, step: 0.05
-      overlap: type: \boolean, default: false
-      padding: type: \number, default: 1, min: 0, max: 20, step: 0.5
+      scale: type: \number, default: 1, min: 0.1, max: 4, step: 0.05, desc: {en: "multiplier on bubble size", "zh-TW": "泡泡大小的倍率"}
+      overlap: type: \boolean, default: false, desc: {en: "let bubbles overlap and stay at their region centers, instead of pushing them apart", "zh-TW": "泡泡可以重疊並留在區塊中心，不互相推開"}
+      padding: type: \number, default: 1, min: 0, max: 20, step: 0.5, desc: {en: "gap between bubbles when they don't overlap ( px )", "zh-TW": "泡泡不重疊時彼此的間距 ( px )"}
       # 不重疊時, 以虛線連到行政區中心
-      leader: type: \boolean, default: true
-      leader-color: type: \color, default: \#999
-      basemap: type: \boolean, default: true
-      basemap-color: type: \color, default: \#eeeeee
-      stroke: type: \color, default: \#fff
-      stroke-width: type: \number, default: 0.5, min: 0, max: 10, step: 0.1
+      leader: type: \boolean, default: true, desc: {en: "draw a dashed line from a moved bubble to its region center", "zh-TW": "泡泡被推開時，以虛線連到區塊中心"}
+      leader-color: type: \color, default: \#999, desc: {en: "color of the dashed leader lines", "zh-TW": "連到區塊中心的虛線的顏色"}
+      basemap: type: \boolean, default: true, desc: {en: "draw the region shapes under the bubbles", "zh-TW": "在泡泡底下畫出行政區的形狀"}
+      basemap-color: type: \color, default: \#eeeeee, desc: {en: "fill color of the regions under the bubbles", "zh-TW": "泡泡底下行政區的填色"}
+      stroke: type: \color, default: \#fff, desc: {en: "outline color of the bubbles", "zh-TW": "泡泡外框的顏色"}
+      stroke-width: type: \number, default: 0.5, min: 0, max: 10, step: 0.1, desc: {en: "outline width of the bubbles ( px )", "zh-TW": "泡泡外框的粗細 ( px )"}
       # 比例 ( 圓餅 ): side = 依方位 ( 左右上下 ), desc = 由大到小從 12 點鐘起順時針
-      pie: type: \choice, values: <[side desc none]>, default: \side
+      pie: type: \choice, values: <[side desc none]>, default: \side, desc: {en: "with two or more proportion fields, draw bubbles as pies. side: slices by direction ( left, right, top ... ); desc: largest first from 12 o'clock; none: plain bubbles", "zh-TW": "綁定兩個以上「比例」欄位時把泡泡畫成圓餅。side：各片依方位 ( 左、右、上 ... ) 排；desc：由大到小從 12 點鐘起；none：不畫圓餅"}
     label:
-      enabled: type: \boolean, default: true
-      village: type: \boolean, default: false
+      enabled: type: \boolean, default: true, desc: {en: "show region names", "zh-TW": "顯示行政區名稱"}
+      village: type: \boolean, default: false, desc: {en: "also name the villages", "zh-TW": "村里也標上名稱"}
       font: chart.utils.config.from({preset: \font})
       color: type: \color, default: \#222
-      halo: type: \color, default: \#fff
-      halo-width: type: \number, default: 2, min: 0, max: 10, step: 0.5
+      halo: type: \color, default: \#fff, desc: {en: "color of the outline around names, keeping them readable over the map", "zh-TW": "名稱外圍描邊的顏色，讓字在地圖上清楚"}
+      halo-width: type: \number, default: 2, min: 0, max: 10, step: 0.5, desc: {en: "width of the outline around names ( px )", "zh-TW": "名稱外圍描邊的粗細 ( px )"}
     # crossfilter 的單位: town = 鄉鎮; village = 鄉鎮 + 村里
-    filter-level: type: \choice, values: <[town village]>, default: \town
+    filter-level: type: \choice, values: <[town village]>, default: \town, desc: {en: "what a click selects for other charts: town, or town and village", "zh-TW": "點選時對其他圖表篩選的單位：town 鄉鎮，village 鄉鎮加村里"}
   }
 
   dimension:
