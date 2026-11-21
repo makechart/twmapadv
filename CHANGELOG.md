@@ -1,5 +1,9 @@
 # Change Logs
 
+## v0.0.6
+
+ - add `desc` ( en / zh-TW ) to the config items, shown under the label in the makechart style panel
+
 ## v0.0.5
 
  - fix bug: `filterDims` was not declared, so the core reported `name`, a dimension this chart doesn't have.
