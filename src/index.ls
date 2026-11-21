@@ -439,6 +439,19 @@ mod = ({context, t, data, manager, cls}) ->
     filter-level: type: \choice, values: <[town village]>, default: \town, desc: {en: "what a click selects for other charts: town, or town and village", "zh-TW": "點選時對其他圖表篩選的單位：town 鄉鎮，village 鄉鎮加村里"}
   }
 
+  # 段落 ( tab ) 的說明, key 是段落的路徑. preset 的段落由 chart.utils.config.tabinfo 掛上來, 共用的 common 由核心補
+  tabinfo: chart.utils.config.tabinfo({tip: \tip, legend: \legend}) <<<
+    legend: desc: {en: "the list of categories or fields, or the color bar when coloring by value", "zh-TW": "分類或欄位的清單，依數值上色時則是色條"}
+    heat: desc: {en: "the color scale that turns values into region colors", "zh-TW": "把數值轉成區塊顏色的色階"}
+    "heat/center": desc: {en: "the center value of the diverging color scale", "zh-TW": "雙極 ( diverging ) 色階的中點"}
+    village: desc: {en: "how villages are shown under the towns, and how town values come from them", "zh-TW": "鄉鎮底下村里的顯示方式，以及鄉鎮數值如何由村里計算"}
+    border: desc: {en: "the borders between towns", "zh-TW": "鄉鎮之間的邊界"}
+    "border/village": desc: {en: "the borders between villages", "zh-TW": "村里之間的邊界"}
+    extrude: desc: {en: "raise regions into 3D columns by value, and how the 3D view is turned", "zh-TW": "依數值把區塊拉成立體柱，以及立體視角的轉動"}
+    "extrude/base": desc: {en: "the plate under the 3D map", "zh-TW": "立體地圖下方的底板"}
+    cartogram: desc: {en: "how regions are distorted in cartogram mode", "zh-TW": "cartogram 模式下區塊的變形"}
+    bubble: desc: {en: "the circles drawn in bubble mode, and the map under them", "zh-TW": "bubble 模式下的泡泡，以及底下的地圖"}
+    label: desc: {en: "region names written on the map", "zh-TW": "標在地圖上的行政區名稱"}
   dimension:
     # 上層 / 下層. 名稱依層級: 縣市圖是鄉鎮 / 村里, 全國是縣市 / 鄉鎮
     town: {type: \N, name: (if national => "county" else "town"), priority: 1}
